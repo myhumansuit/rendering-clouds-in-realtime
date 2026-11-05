@@ -1,15 +1,4 @@
-#include <SDL3/SDL_stdinc.h>
 #include <stdbool.h>
-#define CHECK(r) do {\
-    VkResult _r = (r); \
-    if (_r != VK_SUCCESS) { \
-        fprintf(stderr, "%s:%d failed check: %d\n", __FILE__, __LINE__, _r); \
-        return 1; \
-    } \
-}while (0)
-
-
-//standard c headers
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,22 +8,48 @@
 #include <SDL3/SDL_vulkan.h>
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_core.h>
+#include <SDL3/SDL_stdinc.h>
+
+#include "device.h"
+
+#define CHECK(r) do {\
+    VkResult _r = (r); \
+    if (_r != VK_SUCCESS) { \
+        fprintf(stderr, "%s:%d failed check: %d\n", __FILE__, __LINE__, _r); \
+        return 1; \
+    } \
+}while (0)
 
 
 
-static const char *device_type_name(VkPhysicalDeviceType t) {
-    switch (t) {
-        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "integrated GPU";
-        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   return "discrete GPU";
-        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:    return "virtual GPU";
-        case VK_PHYSICAL_DEVICE_TYPE_CPU:            return "CPU (software)";
-        default:                                     return "other";
+
+
+static bool find_queue_family(VkPhysicalDevice dev, VkSurfaceKHR surface, uint32_t *out_family) {
+    uint32_t count = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, NULL);
+    if (count == 0) return false;
+ 
+    VkQueueFamilyProperties *fams = malloc(count * sizeof *fams);
+    if (!fams) return false;
+    vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, fams);
+ 
+    const VkQueueFlags needed = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
+    bool found = false;
+    for (uint32_t i = 0; i < count && !found; i++) {
+        if ((fams[i].queueFlags & needed) != needed) continue;
+ 
+        VkBool32 can_present = VK_FALSE;
+        vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &can_present);
+        if (can_present) {
+            *out_family = i;
+            found = true;
+        }
     }
+    free(fams);
+    return found;
 }
 
-static bool check_device_suitability (VkPhysicalDevice d) {
-    return true;
-}
+
 
 int main (void) {
     
@@ -101,30 +116,21 @@ int main (void) {
         return 1;
     }
 
-
-    //Get number of physical devices
-    uint32_t device_count;
-    CHECK(vkEnumeratePhysicalDevices(instance, &device_count, NULL));
-    if (device_count == 0) {
-    fprintf(stderr, "No Vulkan devices found\n");
-    return 1;
-    }
-
-    //Get list of devices
-    VkPhysicalDevice devices [device_count];
-    VkPhysicalDeviceProperties device_properties [device_count];
-    CHECK(vkEnumeratePhysicalDevices(instance, &device_count, devices));
+    GpuChoice gpu;
     
-    //Print each 
-    for (Uint32 i = 0; i < device_count; i++){
-        vkGetPhysicalDeviceProperties(devices[i], &device_properties[i]);
-        printf("Name: %s\nDevice Type: %s\n",
-            device_properties[i].deviceName, 
-            device_type_name(device_properties[i].deviceType));
+    if (!pick_physical_device(instance, surface, &gpu)) {
+        fprintf(stderr, "No suitable GPU\n");
+        return 1;
     }
     
+    printf("Selected: %s (queue family %u)\n", gpu.props.deviceName, gpu.queue_family);
 
-
+    VkDevice device;
+    VkQueue queue;
+    if (!create_logical_device(&gpu, &device, &queue)) {
+        fprintf(stderr, "Logical Device Creation Failed :(");
+        return 1;
+    }
 
     //Frame loop
     bool running = true;
@@ -137,7 +143,10 @@ int main (void) {
     }
 
 
+
+
     //Destroy all instances/windows we have set up
+    vkDestroyDevice(device, NULL);
     SDL_Vulkan_DestroySurface(instance, surface, NULL);
     vkDestroyInstance(instance, NULL);
     SDL_DestroyWindow(window);

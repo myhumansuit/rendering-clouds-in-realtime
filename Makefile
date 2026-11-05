@@ -1,11 +1,13 @@
 CC      = gcc
 CFLAGS  = -Wall -Wextra -g $(shell pkg-config --cflags sdl3 vulkan)
 LDLIBS  = $(shell pkg-config --libs sdl3 vulkan)
-
-test: assets/test.c
-	$(CC) $(CFLAGS) assets/test.c -o bin/test $(LDLIBS)
-
+ 
+bin/test: assets/test.c assets/device.c assets/device.h
+	mkdir -p bin
+	$(CC) $(CFLAGS) assets/test.c assets/device.c -o bin/test $(LDLIBS)
+ 
 clean:
-	rm -f test
-
+	rm -f bin/test
+ 
 .PHONY: clean
+ 
