@@ -1,4 +1,16 @@
+#include <SDL3/SDL_stdinc.h>
+#include <stdbool.h>
+#define CHECK(r) do {\
+    VkResult _r = (r); \
+    if (_r != VK_SUCCESS) { \
+        fprintf(stderr, "%s:%d failed check: %d\n", __FILE__, __LINE__, _r); \
+        return 1; \
+    } \
+}while (0)
+
+
 //standard c headers
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,6 +30,10 @@ static const char *device_type_name(VkPhysicalDeviceType t) {
         case VK_PHYSICAL_DEVICE_TYPE_CPU:            return "CPU (software)";
         default:                                     return "other";
     }
+}
+
+static bool check_device_suitability (VkPhysicalDevice d) {
+    return true;
 }
 
 int main (void) {
@@ -72,7 +88,6 @@ int main (void) {
 
     //Create vkinstance into instance and check that it worked
     VkInstance instance;
-
     VkResult r = vkCreateInstance(&create_info, NULL, &instance);
     if (r != VK_SUCCESS) {
         fprintf(stderr, "vkCreateInstance failed: %d\n",r);
@@ -81,10 +96,33 @@ int main (void) {
 
     //Create a surface from the window to give to vulkan
     VkSurfaceKHR surface;
-    if (SDL_Vulkan_CreateSurface(window, instance, NULL, &surface)){
-        fprintf(stderr, "SDL_Vulkan_CreateSurface failed");
+    if (!SDL_Vulkan_CreateSurface(window, instance, NULL, &surface)){
+        fprintf(stderr, "SDL_Vulkan_CreateSurface failed: %s", SDL_GetError());
         return 1;
     }
+
+
+    //Get number of physical devices
+    uint32_t device_count;
+    CHECK(vkEnumeratePhysicalDevices(instance, &device_count, NULL));
+    if (device_count == 0) {
+    fprintf(stderr, "No Vulkan devices found\n");
+    return 1;
+    }
+
+    //Get list of devices
+    VkPhysicalDevice devices [device_count];
+    VkPhysicalDeviceProperties device_properties [device_count];
+    CHECK(vkEnumeratePhysicalDevices(instance, &device_count, devices));
+    
+    //Print each 
+    for (Uint32 i = 0; i < device_count; i++){
+        vkGetPhysicalDeviceProperties(devices[i], &device_properties[i]);
+        printf("Name: %s\nDevice Type: %s\n",
+            device_properties[i].deviceName, 
+            device_type_name(device_properties[i].deviceType));
+    }
+    
 
 
 
