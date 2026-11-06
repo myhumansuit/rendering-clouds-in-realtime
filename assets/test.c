@@ -24,13 +24,13 @@
 
 int main (void) {
     
-    //initialise sdl
+    // initialise sdl
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
         return 1;
     }
 
-    //create sdl window, loading vulkan as a side-effect
+    // create sdl window, loading vulkan as a side-effect
     SDL_Window *window = SDL_CreateWindow("test", 1280, 720,
                                           SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
     if (!window) {
@@ -39,11 +39,11 @@ int main (void) {
         return 1;
     }
 
-    //Find the extensions SDL Needs for windows
+    // Find the extensions SDL Needs for windows
     Uint32 sdl_extension_count = 0;
     const char * const *sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extension_count);
 
-    //Make a copy of the extensions, adding debug utils to the end
+    // Make a copy of the extensions, adding debug utils to the end
     const char **extensions = malloc((sdl_extension_count + 1) * sizeof(char *));
     memcpy(extensions, sdl_extensions, sdl_extension_count * sizeof(char *));
     extensions[sdl_extension_count] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
@@ -52,11 +52,11 @@ int main (void) {
     printf("SDL wants: %s\n", sdl_extensions[i]);
     }
 
-    //Which enabled layers we want in our vulkan instance
-    const char *layers[] = {"VK_LAYER_KHRONOS_validation", //error checking, costs performance
-                            "VK_LAYER_MESA_overlay" };
+    // Which enabled layers we want in our vulkan instance
+    const char *layers[] = {"VK_LAYER_KHRONOS_validation"}; //error checking, costs performance
+                            // "VK_LAYER_MESA_overlay" };
 
-    //Setup structs for vkinstance creation
+    // Setup structs for vkinstance creation
     VkApplicationInfo app_info = {
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pApplicationName = "cloud renderer",
@@ -72,7 +72,7 @@ int main (void) {
         .ppEnabledExtensionNames = extensions,
     };
 
-    //Create vkinstance into instance and check that it worked
+    // Create vkinstance into instance and check that it worked
     VkInstance instance;
     VkResult r = vkCreateInstance(&create_info, NULL, &instance);
     if (r != VK_SUCCESS) {
@@ -80,7 +80,7 @@ int main (void) {
         return 1;
     }
 
-    //Create a surface from the window to give to vulkan
+    // Create a surface from the window to give to vulkan
     VkSurfaceKHR surface;
     if (!SDL_Vulkan_CreateSurface(window, instance, NULL, &surface)){
         fprintf(stderr, "SDL_Vulkan_CreateSurface failed: %s", SDL_GetError());
@@ -106,7 +106,7 @@ int main (void) {
     Swapchain swapchain;
     create_swapchain(device, &gpu, surface, window, &swapchain);
 
-    //Frame loop
+    // Frame loop
     bool running = true;
     while (running) {
         SDL_Event e;
@@ -116,11 +116,9 @@ int main (void) {
         SDL_Delay(10);
     }
 
-
-
-
-    //Destroy all instances/windows we have set up
-
+    // Destroy all instances/windows we have set up, 
+    // in reverse order so dependencies aren't violated
+    destroy_swapchain(device, &swapchain);
     vkDestroyDevice(device, NULL);
     SDL_Vulkan_DestroySurface(instance, surface, NULL);
     vkDestroyInstance(instance, NULL);
