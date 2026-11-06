@@ -1,9 +1,5 @@
 #include "device.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 const char *device_type_name(VkPhysicalDeviceType t) {
     switch (t) {
         case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "integrated GPU";
@@ -60,7 +56,7 @@ static bool find_queue_family(VkPhysicalDevice dev, VkSurfaceKHR surface,
     return found;
 }
 
-// Higher is better. Never prefers the CPU (llvmpipe) over a real GPU.
+// Rank device types, never prefers the CPU (llvmpipe) over a real GPU.
 static int score_device_type(VkPhysicalDeviceType t) {
     switch (t) {
         case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   return 4;
@@ -151,7 +147,7 @@ bool create_logical_device(const GpuChoice *gpu, VkDevice *device, VkQueue *queu
         .pQueuePriorities = &priority,
     };
 
-    // Features to turn on. Same struct as in selection, but now it is an INPUT.
+    // Features to turn on
     VkPhysicalDeviceVulkan13Features f13 = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
         .dynamicRendering = VK_TRUE,
@@ -162,7 +158,7 @@ bool create_logical_device(const GpuChoice *gpu, VkDevice *device, VkQueue *queu
 
     VkDeviceCreateInfo device_info = {
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .pNext = &f13,                        // feature chain; leave pEnabledFeatures NULL
+        .pNext = &f13,                        // feature chain
         .queueCreateInfoCount = 1,
         .pQueueCreateInfos = &queue_info,
         .enabledExtensionCount = sizeof extensions / sizeof extensions[0],

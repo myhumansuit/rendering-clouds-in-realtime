@@ -11,6 +11,7 @@
 #include <SDL3/SDL_stdinc.h>
 
 #include "device.h"
+#include "swapchain.h"
 
 #define CHECK(r) do {\
     VkResult _r = (r); \
@@ -19,36 +20,6 @@
         return 1; \
     } \
 }while (0)
-
-
-
-
-
-static bool find_queue_family(VkPhysicalDevice dev, VkSurfaceKHR surface, uint32_t *out_family) {
-    uint32_t count = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, NULL);
-    if (count == 0) return false;
- 
-    VkQueueFamilyProperties *fams = malloc(count * sizeof *fams);
-    if (!fams) return false;
-    vkGetPhysicalDeviceQueueFamilyProperties(dev, &count, fams);
- 
-    const VkQueueFlags needed = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT;
-    bool found = false;
-    for (uint32_t i = 0; i < count && !found; i++) {
-        if ((fams[i].queueFlags & needed) != needed) continue;
- 
-        VkBool32 can_present = VK_FALSE;
-        vkGetPhysicalDeviceSurfaceSupportKHR(dev, i, surface, &can_present);
-        if (can_present) {
-            *out_family = i;
-            found = true;
-        }
-    }
-    free(fams);
-    return found;
-}
-
 
 
 int main (void) {
@@ -132,6 +103,9 @@ int main (void) {
         return 1;
     }
 
+    Swapchain swapchain;
+    create_swapchain(device, &gpu, surface, window, &swapchain);
+
     //Frame loop
     bool running = true;
     while (running) {
@@ -146,6 +120,7 @@ int main (void) {
 
 
     //Destroy all instances/windows we have set up
+
     vkDestroyDevice(device, NULL);
     SDL_Vulkan_DestroySurface(instance, surface, NULL);
     vkDestroyInstance(instance, NULL);

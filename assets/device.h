@@ -1,9 +1,13 @@
 #ifndef DEVICE_H
 #define DEVICE_H
  
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <vulkan/vulkan.h>
+
  
 // Result of physical device selection.
 typedef struct {
